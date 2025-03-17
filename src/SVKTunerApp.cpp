@@ -4,10 +4,6 @@ SVKTunerApp::SVKTunerApp() {
     // Constructor 
 }
 
-SVKTunerApp::~SVKTunerApp() {
-    // Destructor
-}
-
 void SVKTunerApp::begin(long baudRate) {
     Serial.begin(baudRate); // Initialize Serial communication
 }
