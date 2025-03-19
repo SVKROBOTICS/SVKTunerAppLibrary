@@ -37,12 +37,12 @@ void SVKTunerApp::updateParameters() {
 
 void SVKTunerApp::parseData(String data) {
     // Parse fixed variables
-    parseFixedVariable(data, "Kp=", &SVKTunerApp::writeKp, this);
-    parseFixedVariable(data, "Ki=", &SVKTunerApp::writeKi, this);
-    parseFixedVariable(data, "Kd=", &SVKTunerApp::writeKd, this);
-    parseFixedVariable(data, "baseSpeed=", &SVKTunerApp::writeBaseSpeed, this);
-    parseFixedVariable(data, "maxSpeed=", &SVKTunerApp::writeMaxSpeed, this);
-    parseFixedVariable(data, "acceleration=", &SVKTunerApp::writeAcceleration, this);
+    parseFixedVariable(data, "Kp=", [this](float value) { writeKp(value); });
+    parseFixedVariable(data, "Ki=", [this](float value) { writeKi(value); });
+    parseFixedVariable(data, "Kd=", [this](float value) { writeKd(value); });
+    parseFixedVariable(data, "baseSpeed=", [this](float value) { writeBaseSpeed((int)value); });
+    parseFixedVariable(data, "maxSpeed=", [this](float value) { writeMaxSpeed((int)value); });
+    parseFixedVariable(data, "acceleration=", [this](float value) { writeAcceleration((int)value); });
 
     // Parse custom variables
     int customVarIndex = 0;
@@ -79,7 +79,7 @@ void SVKTunerApp::parseData(String data) {
 }
 
 // Helper function to parse fixed variables
-void SVKTunerApp::parseFixedVariable(String data, const String& prefix, void (SVKTunerApp::*writeFunction)(float), SVKTunerApp* instance) {
+void SVKTunerApp::parseFixedVariable(String data, const String& prefix, void (SVKTunerApp::*writeFunction)(float)) {
     int index = data.indexOf(prefix);
     if (index != -1) {
         int start = index + prefix.length();
@@ -88,7 +88,7 @@ void SVKTunerApp::parseFixedVariable(String data, const String& prefix, void (SV
 
         String valueStr = data.substring(start, end);
         if (isValidFloat(valueStr)) {
-            (instance->*writeFunction)(valueStr.toFloat()); // Call the member function
+            (this->*writeFunction)(valueStr.toFloat()); // Call the member function
         }
     }
 }
