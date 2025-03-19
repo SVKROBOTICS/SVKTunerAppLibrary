@@ -2,7 +2,6 @@
 
 #include <Arduino.h>
 #include <EEPROM.h>
-#include <functional>
 
 class SVKTunerApp {
 public:
@@ -52,6 +51,9 @@ public:
     float readCustomVariable(String name);
     void logCustomVariables();
 
+    /// Parse received data
+    void parseData(String data);
+
 private:
     /// Write float to EEPROM
     void writeFloatToEEPROM(int address, float value);
@@ -61,16 +63,13 @@ private:
     void writeIntToEEPROM(int address, int value);
     /// Read int from EEPROM
     int readIntFromEEPROM(int address);
-    /// Parse received data
-    void parseData(String data);
     /// Helper function to parse fixed variable data
-    void parseFixedVariable(String data, const String& prefix, std::function<void(float)> writeFunction);
+    void parseFixedVariable(String data, const String& prefix, void (SVKTunerApp::*writeFunction)(float), SVKTunerApp* instance);
 
     /// @brief Tracks the last write time
     unsigned long _lastWriteTime = 0;
     /// 5-second timeout
     static const unsigned long WRITE_TIMEOUT = 5000;
-
 
     /// Addresses for PID parameters in EEPROM
     static const int KP_ADDRESS = 0;
