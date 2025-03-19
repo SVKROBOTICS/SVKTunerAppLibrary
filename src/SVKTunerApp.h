@@ -67,7 +67,7 @@ private:
     void parseFixedVariable(String data, const String& prefix, void (SVKTunerApp::*writeFunction)(float), SVKTunerApp* instance);
 
     /// @brief Tracks the last write time
-    unsigned long _lastWriteTime = 0;
+    unsigned long lastWriteTime = 0;
     /// 5-second timeout
     static const unsigned long WRITE_TIMEOUT = 5000;
 
@@ -93,5 +93,5 @@ private:
     };
 
     // Start-Stop signals
-    String _lastReceivedData; // Store the last received data for start/stop checks
+    String lastReceivedData; // Store the last received data for start/stop checks
 };
