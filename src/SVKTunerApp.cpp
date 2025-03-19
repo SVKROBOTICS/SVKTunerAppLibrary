@@ -4,11 +4,13 @@ SVKTunerApp::SVKTunerApp() {
     // Constructor 
 }
 
-void SVKTunerApp::begin(long baudRate) {
+void SVKTunerApp::begin(long baudRate)
+{
     Serial.begin(baudRate); // Initialize Serial communication
 }
 
-bool SVKTunerApp::isStartSignalReceived() {
+bool SVKTunerApp::isStartSignalReceived()
+{
     if (Serial.available()) {
         lastReceivedData = Serial.readStringUntil('\n'); // Read the incoming data
         if (lastReceivedData == "START") {
@@ -18,7 +20,8 @@ bool SVKTunerApp::isStartSignalReceived() {
     return false; // No start signal
 }
 
-bool SVKTunerApp::isStopSignalReceived() {
+bool SVKTunerApp::isStopSignalReceived()
+{
     if (Serial.available()) {
         lastReceivedData = Serial.readStringUntil('\n'); // Read the incoming data
         if (lastReceivedData == "STOP") {
@@ -28,21 +31,51 @@ bool SVKTunerApp::isStopSignalReceived() {
     return false; // No stop signal
 }
 
-void SVKTunerApp::updateParameters() {
+void SVKTunerApp::updateParameters()
+{
     if (Serial.available()) {
         String data = Serial.readStringUntil('\n'); // Read data until newline
         parseData(data); // Parse the received data
     }
 }
 
-void SVKTunerApp::parseData(String data) {
+void SVKTunerApp::parseData(String data)
+{
+    // Variables to store parsed values
+    float kpValue = 0.0, kiValue = 0.0, kdValue = 0.0;
+    int baseSpeedValue = 0, maxSpeedValue = 0, accelerationValue = 0;
+
     // Parse fixed variables
-    parseFixedVariable(data, "Kp=", [this](float value) { writeKp(value); });
-    parseFixedVariable(data, "Ki=", [this](float value) { writeKi(value); });
-    parseFixedVariable(data, "Kd=", [this](float value) { writeKd(value); });
-    parseFixedVariable(data, "baseSpeed=", [this](float value) { writeBaseSpeed((int)value); });
-    parseFixedVariable(data, "maxSpeed=", [this](float value) { writeMaxSpeed((int)value); });
-    parseFixedVariable(data, "acceleration=", [this](float value) { writeAcceleration((int)value); });
+    if (data.indexOf("Kp=") != -1) {
+        kpValue = parseValue(data, "Kp=");
+        if (isValidFloat(String(kpValue))) {
+            writeKp(kpValue);
+        }
+    }
+    if (data.indexOf("Ki=") != -1) {
+        kiValue = parseValue(data, "Ki=");
+        if (isValidFloat(String(kiValue))) {
+            writeKi(kiValue);
+        }
+    }
+    if (data.indexOf("Kd=") != -1) {
+        kdValue = parseValue(data, "Kd=");
+        if (isValidFloat(String(kdValue))) {
+            writeKd(kdValue);
+        }
+    }
+    if (data.indexOf("baseSpeed=") != -1) {
+        baseSpeedValue = (int)parseValue(data, "baseSpeed=");
+        writeBaseSpeed(baseSpeedValue);
+    }
+    if (data.indexOf("maxSpeed=") != -1) {
+        maxSpeedValue = (int)parseValue(data, "maxSpeed=");
+        writeMaxSpeed(maxSpeedValue);
+    }
+    if (data.indexOf("acceleration=") != -1) {
+        accelerationValue = (int)parseValue(data, "acceleration=");
+        writeAcceleration(accelerationValue);
+    }
 
     // Parse custom variables
     int customVarIndex = 0;
@@ -78,8 +111,8 @@ void SVKTunerApp::parseData(String data) {
     }
 }
 
-// Helper function to parse fixed variables
-void SVKTunerApp::parseFixedVariable(String data, const String& prefix, void (SVKTunerApp::*writeFunction)(float)) {
+float SVKTunerApp::parseValue(String data, const String& prefix)
+{
     int index = data.indexOf(prefix);
     if (index != -1) {
         int start = index + prefix.length();
@@ -88,12 +121,14 @@ void SVKTunerApp::parseFixedVariable(String data, const String& prefix, void (SV
 
         String valueStr = data.substring(start, end);
         if (isValidFloat(valueStr)) {
-            (this->*writeFunction)(valueStr.toFloat()); // Call the member function
+            return valueStr.toFloat();
         }
     }
+    return 0.0; // Return 0 if the prefix is not found or the value is invalid
 }
 
-bool SVKTunerApp::isValidFloat(String value) {
+bool SVKTunerApp::isValidFloat(String value)
+{
     for (char c : value) {
         if (!isdigit(c) && c != '.' && c != '-') {
             return false;
@@ -103,71 +138,85 @@ bool SVKTunerApp::isValidFloat(String value) {
 }
 
 // Functions to read/write floats to EEPROM
-void SVKTunerApp::writeFloatToEEPROM(int address, float value) {
+void SVKTunerApp::writeFloatToEEPROM(int address, float value)
+{
     EEPROM.put(address, value); // Write float to EEPROM
 }
 
-float SVKTunerApp::readFloatFromEEPROM(int address) {
+float SVKTunerApp::readFloatFromEEPROM(int address)
+{
     float value;
     EEPROM.get(address, value); // Read float from EEPROM
     return value;
 }
 
 // Functions to read/write integers to EEPROM
-void SVKTunerApp::writeIntToEEPROM(int address, int value) {
+void SVKTunerApp::writeIntToEEPROM(int address, int value)
+{
     EEPROM.put(address, value); // Write int to EEPROM
 }
 
-int SVKTunerApp::readIntFromEEPROM(int address) {
+int SVKTunerApp::readIntFromEEPROM(int address)
+{
     int value;
     EEPROM.get(address, value); // Read int from EEPROM
     return value;
 }
 
 // Functions to read PID values from EEPROM
-float SVKTunerApp::readKp() {
+float SVKTunerApp::readKp()
+{
     return readFloatFromEEPROM(KP_ADDRESS);
 }
 
-float SVKTunerApp::readKi() {
+float SVKTunerApp::readKi()
+{
     return readFloatFromEEPROM(KI_ADDRESS);
 }
 
-float SVKTunerApp::readKd() {
+float SVKTunerApp::readKd()
+{
     return readFloatFromEEPROM(KD_ADDRESS);
 }
 
-int SVKTunerApp::readBaseSpeed() {
+int SVKTunerApp::readBaseSpeed()
+{
     return readIntFromEEPROM(BASE_SPEED_ADDRESS);
 }
 
-int SVKTunerApp::readMaxSpeed() {
+int SVKTunerApp::readMaxSpeed()
+{
     return readIntFromEEPROM(MAX_SPEED_ADDRESS);
 }
 
-int SVKTunerApp::readAcceleration() {
+int SVKTunerApp::readAcceleration()
+{
     return readIntFromEEPROM(ACCELERATION_ADDRESS);
 }
 
 
 
 // Functions to log PID values to Serial Monitor
-void SVKTunerApp::logKp() {
+void SVKTunerApp::logKp()
+{
     Serial.print("Kp: ");
     Serial.println(readKp());
 }
 
-void SVKTunerApp::logKi() {
+void SVKTunerApp::logKi()
+{
     Serial.print("Ki: ");
     Serial.println(readKi());
 }
 
-void SVKTunerApp::logKd() {
+void SVKTunerApp::logKd()
+{
     Serial.print("Kd: ");
     Serial.println(readKd());
 }
 
-void SVKTunerApp::logAllParameters() {
+void SVKTunerApp::logAllParameters()
+{
     logKp();
     logKi();
     logKd();
@@ -175,7 +224,8 @@ void SVKTunerApp::logAllParameters() {
 }
 
 // Functions to write new PID values to EEPROM
-void SVKTunerApp::writeKp(float value) {
+void SVKTunerApp::writeKp(float value)
+{
     if (millis() - lastWriteTime >= WRITE_TIMEOUT) {
         EEPROM.put(KP_ADDRESS, value);
         lastWriteTime = millis(); // Update the last write time
@@ -185,7 +235,8 @@ void SVKTunerApp::writeKp(float value) {
     }
 }
 
-void SVKTunerApp::writeKi(float value) {
+void SVKTunerApp::writeKi(float value)
+{
     if (millis() - lastWriteTime >= WRITE_TIMEOUT) {
         EEPROM.put(KI_ADDRESS, value);
         lastWriteTime = millis(); // Update the last write time
@@ -195,7 +246,8 @@ void SVKTunerApp::writeKi(float value) {
     }
 }
 
-void SVKTunerApp::writeKd(float value) {
+void SVKTunerApp::writeKd(float value)
+{
     if (millis() - lastWriteTime >= WRITE_TIMEOUT) {
         EEPROM.put(KD_ADDRESS, value);
         lastWriteTime = millis(); // Update the last write time
@@ -205,7 +257,8 @@ void SVKTunerApp::writeKd(float value) {
     }
 }
 
-void SVKTunerApp::writeBaseSpeed(int value) {
+void SVKTunerApp::writeBaseSpeed(int value)
+{
     if (millis() - lastWriteTime >= WRITE_TIMEOUT) {
         EEPROM.put(BASE_SPEED_ADDRESS, value);
         lastWriteTime = millis(); // Update the last write time
@@ -225,7 +278,8 @@ void SVKTunerApp::writeMaxSpeed(int value) {
     }
 }
 
-void SVKTunerApp::writeAcceleration(int value) {
+void SVKTunerApp::writeAcceleration(int value)
+{
     if (millis() - lastWriteTime >= WRITE_TIMEOUT) {
         EEPROM.put(ACCELERATION_ADDRESS, value);
         lastWriteTime = millis(); // Update the last write time
@@ -236,7 +290,8 @@ void SVKTunerApp::writeAcceleration(int value) {
 }
 
 // Functions for custom variables
-void SVKTunerApp::addCustomVariable(String name, float value) {
+void SVKTunerApp::addCustomVariable(String name, float value)
+{
     // Check if the timeout has passed
     if (millis() - lastWriteTime < WRITE_TIMEOUT) {
         Serial.println("Write timeout: Custom variable not updated.");
@@ -265,7 +320,8 @@ void SVKTunerApp::addCustomVariable(String name, float value) {
     Serial.println("Custom variable limit reached!");
 }
 
-float SVKTunerApp::readCustomVariable(String name) {
+float SVKTunerApp::readCustomVariable(String name)
+{
     for (int i = 0; i < MAX_CUSTOM_VARS; i++) {
         int address = CUSTOM_VAR_START_ADDRESS + (i * CUSTOM_VAR_SIZE);
         CustomVariable var;
@@ -278,7 +334,8 @@ float SVKTunerApp::readCustomVariable(String name) {
     return 0.0; // Return 0 if variable not found
 }
 
-void SVKTunerApp::logCustomVariables() {
+void SVKTunerApp::logCustomVariables()
+{
     for (int i = 0; i < MAX_CUSTOM_VARS; i++) {
         int address = CUSTOM_VAR_START_ADDRESS + (i * CUSTOM_VAR_SIZE);
         CustomVariable var;

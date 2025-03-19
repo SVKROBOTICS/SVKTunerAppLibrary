@@ -51,9 +51,6 @@ public:
     float readCustomVariable(String name);
     void logCustomVariables();
 
-    /// Parse received data
-    void parseData(String data);
-
 private:
     /// Write float to EEPROM
     void writeFloatToEEPROM(int address, float value);
@@ -63,8 +60,10 @@ private:
     void writeIntToEEPROM(int address, int value);
     /// Read int from EEPROM
     int readIntFromEEPROM(int address);
-    /// Helper function to parse fixed variable data
-    void parseFixedVariable(String data, const String& prefix, void (SVKTunerApp::*writeFunction)(float), SVKTunerApp* instance);
+    /// Parse received data
+    void parseData(String data);
+    /// Helper function to parse fixed variable value
+    float SVKTunerApp::parseValue(String data, const String& prefix);
 
     /// @brief Tracks the last write time
     unsigned long lastWriteTime = 0;
