@@ -2,12 +2,14 @@
 
 #include <Arduino.h>
 #include <EEPROM.h>
+#include <SoftwareSerial.h>
 
 class SVKTunerApp {
 public:
-    // Constructor
-    SVKTunerApp();
-    /// Initialize Serial communication
+    // Constructor stores a reference to the SoftwareSerial instance
+    SVKTunerApp(SoftwareSerial& serial);
+
+    // Begins connection
     void begin(long baudRate);
 
     // Start-Stop functionality
@@ -17,6 +19,9 @@ public:
     /// Read Bluetooth data and update EEPROM
     void updateParameters();
 
+    // Packet handling functions
+    bool receiveDataPackets();
+    
     /// Functions to read PID values from EEPROM
     float readKp();
     float readKi();
@@ -52,6 +57,16 @@ public:
     void logCustomVariables();
 
 private:
+    // Stored Reference to a SoftwareSerial object
+    SoftwareSerial& bluetoothSerial;
+    
+    // Packet handling variables
+    String packetBuffer;
+    int currentPacketNumber;
+    int totalPacketsExpected;
+    unsigned long lastPacketTime;
+    bool packetReceptionInProgress;
+    
     /// Write float to EEPROM
     void writeFloatToEEPROM(int address, float value);
     /// Read float from EEPROM
@@ -62,8 +77,14 @@ private:
     int readIntFromEEPROM(int address);
     /// Parse received data
     void parseData(String data);
+    /// Process incoming packet
+    bool processIncomingPacket(String packet);
+    /// Reset packet state
+    void resetPacketState();
     /// Helper function to parse fixed variable value
-    float SVKTunerApp::parseValue(String data, const String& prefix);
+    float parseValue(String data, const String& prefix);
+    /// Helper function for reading data from bluetooth till new line detected
+    String readBluetoothLine();
 
     /// @brief Tracks the last write time
     unsigned long lastWriteTime = 0;

@@ -1,19 +1,150 @@
 #include "./SVKTunerApp.h"
 
-SVKTunerApp::SVKTunerApp() {
-    // Constructor 
+#define START_MARKER '<'
+#define END_MARKER '>'
+#define SEPARATOR '|'
+#define ACK_STRING "<ACK>"
+#define MAX_PACKET_SIZE 64
+#define PACKET_TIMEOUT 2000 // 2 seconds timeout for packet reception
+
+SVKTunerApp::SVKTunerApp(SoftwareSerial& serial)
+{
+    bluetoothSerial = &serial;
+    resetPacketState();
+}
+
+void SVKTunerApp::resetPacketState()
+{
+    packetBuffer = "";
+    currentPacketNumber = 0;
+    totalPacketsExpected = 0;
+    lastPacketTime = 0;
+    packetReceptionInProgress = false;
 }
 
 void SVKTunerApp::begin(long baudRate)
 {
-    Serial.begin(baudRate); // Initialize Serial communication
+    bluetoothSerial.begin(baudRate); // Initialize SoftwareSerial communication
+    resetPacketState();
+}
+
+bool SVKTunerApp::receiveDataPackets() {
+    static String incomingData;
+    
+    while (bluetoothSerial.available()) {
+        char c = bluetoothSerial.read();
+        
+        // Skip any characters until we get a start marker
+        if (!packetReceptionInProgress && c != START_MARKER) {
+            continue; // Ignore garbage before packet starts
+        }
+        
+        if (c == START_MARKER) {
+            incomingData = "";
+            packetReceptionInProgress = true;
+            continue;
+        }
+        
+        if (c == END_MARKER && packetReceptionInProgress) {
+            packetReceptionInProgress = false;
+            
+            // Basic packet format validation
+            if (incomingData.length() < 5) { // Minimum valid packet: "0|1|d"
+                Serial.println("Packet too short - discarded");
+                incomingData = "";
+                continue;
+            }
+            
+            if (processIncomingPacket(incomingData)) {
+                incomingData = "";
+                return true;
+            }
+            incomingData = "";
+            continue;
+        }
+        
+        if (packetReceptionInProgress) {
+            // Prevent buffer overflow
+            if (incomingData.length() < MAX_PACKET_SIZE) {
+                incomingData += c;
+            } else {
+                Serial.println("Packet too long - resetting");
+                resetPacketState();
+                incomingData = "";
+            }
+        }
+    }
+    
+    if (packetReceptionInProgress && millis() - lastPacketTime > PACKET_TIMEOUT) {
+        Serial.println("Packet timeout - resetting");
+        resetPacketState();
+        return false;
+    }
+    
+    return false;
+}
+
+bool SVKTunerApp::processIncomingPacket(String packet)
+{
+    // Parse packet number and total packets
+    int firstSeparator = packet.indexOf(SEPARATOR);
+    int secondSeparator = packet.indexOf(SEPARATOR, firstSeparator + 1);
+    
+    if (firstSeparator == -1 || secondSeparator == -1) {
+        Serial.println("Invalid packet format");
+        return false;
+    }
+    
+    int packetNum = packet.substring(0, firstSeparator).toInt();
+    int totalPackets = packet.substring(firstSeparator + 1, secondSeparator).toInt();
+    String chunk = packet.substring(secondSeparator + 1);
+    
+    // Validate packet number
+    if (packetNum < 0 || packetNum >= totalPackets) {
+        Serial.println("Invalid packet number");
+        return false;
+    }
+    
+    // If this is the first packet, reset the buffer
+    if (packetNum == 0) {
+        packetBuffer = chunk;
+        totalPacketsExpected = totalPackets;
+        currentPacketNumber = 1;
+    } 
+    // If it's the expected next packet
+    else if (packetNum == currentPacketNumber) {
+        packetBuffer += chunk;
+        currentPacketNumber++;
+    } 
+    // Out of sequence packet
+    else {
+        Serial.println("Out of sequence packet");
+        return false;
+    }
+    
+    // Send acknowledgment
+    bluetoothSerial.print(ACK_STRING);
+    bluetoothSerial.print(packetNum);
+    bluetoothSerial.println(END_MARKER);
+    
+    lastPacketTime = millis();
+    
+    // Check if we've received all packets
+    if (currentPacketNumber >= totalPacketsExpected) {
+        // Process the complete message
+        parseData(packetBuffer);
+        resetPacketState();
+        return true;
+    }
+    
+    return false;
 }
 
 bool SVKTunerApp::isStartSignalReceived()
 {
-    if (Serial.available()) {
-        lastReceivedData = Serial.readStringUntil('\n'); // Read the incoming data
-        if (lastReceivedData == "START") {
+    if (bluetoothSerial.available()) {
+        lastReceivedData = readBluetoothLine(); // Read the incoming data
+        if (lastReceivedData == "!START!") {
             return true; // Start signal received
         }
     }
@@ -22,9 +153,9 @@ bool SVKTunerApp::isStartSignalReceived()
 
 bool SVKTunerApp::isStopSignalReceived()
 {
-    if (Serial.available()) {
-        lastReceivedData = Serial.readStringUntil('\n'); // Read the incoming data
-        if (lastReceivedData == "STOP") {
+    if (bluetoothSerial.available()) {
+        lastReceivedData = readBluetoothLine(); // Read the incoming data
+        if (lastReceivedData == "!STOP!") {
             return true; // Stop signal received
         }
     }
@@ -33,9 +164,9 @@ bool SVKTunerApp::isStopSignalReceived()
 
 void SVKTunerApp::updateParameters()
 {
-    if (Serial.available()) {
-        String data = Serial.readStringUntil('\n'); // Read data until newline
-        parseData(data); // Parse the received data
+    // Check for and process incoming packets
+    if (receiveDataPackets()) {
+        Serial.println("Parameters updated from packet data");
     }
 }
 
@@ -195,7 +326,6 @@ int SVKTunerApp::readAcceleration()
 }
 
 
-
 // Functions to log PID values to Serial Monitor
 void SVKTunerApp::logKp()
 {
@@ -347,4 +477,16 @@ void SVKTunerApp::logCustomVariables()
             Serial.println(var.value);
         }
     }
+}
+
+String SVKTunerApp::readBluetoothLine() {
+    String data = "";
+    while (bluetoothSerial.available()) {
+        char c = bluetoothSerial.read();  // Read one character
+        if (c == '\n') {                  // Stop when newline is found
+            break;
+        }
+        data += c;                         // Append character to the string
+    }
+    return data.trim();  // Remove any trailing whitespace (e.g., `\r`)
 }
