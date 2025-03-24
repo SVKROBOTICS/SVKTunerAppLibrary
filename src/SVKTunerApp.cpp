@@ -7,9 +7,10 @@
 #define MAX_PACKET_SIZE 64
 #define PACKET_TIMEOUT 2000 // 2 seconds timeout for packet reception
 
-SVKTunerApp::SVKTunerApp(SoftwareSerial& serial)
+SVKTunerApp::SVKTunerApp(SoftwareSerial& serial) 
+    : bluetoothSerial(serial)  // Initialize reference member properly
 {
-    bluetoothSerial = &serial;
+    bluetoothSerial.listen();  // Optional: Ensure SoftwareSerial is listening
     resetPacketState();
 }
 
@@ -482,11 +483,10 @@ void SVKTunerApp::logCustomVariables()
 String SVKTunerApp::readBluetoothLine() {
     String data = "";
     while (bluetoothSerial.available()) {
-        char c = bluetoothSerial.read();  // Read one character
-        if (c == '\n') {                  // Stop when newline is found
-            break;
-        }
-        data += c;                         // Append character to the string
+        char c = bluetoothSerial.read();
+        if (c == '\n') break;
+        data += c;
     }
-    return data.trim();  // Remove any trailing whitespace (e.g., `\r`)
+    data.trim();  // Modify in-place
+    return data;  // Then return the modified String
 }
