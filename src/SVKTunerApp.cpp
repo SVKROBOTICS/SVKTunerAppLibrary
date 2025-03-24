@@ -490,3 +490,60 @@ String SVKTunerApp::readBluetoothLine() {
     data.trim();  // Modify in-place
     return data;  // Then return the modified String
 }
+
+void SVKTunerApp::debugBluetoothStream() {
+    static String debugBuffer;
+    static unsigned long lastPrint = 0;
+    const unsigned long printInterval = 100; // ms between prints
+    
+    // Read all available bytes
+    while (bluetoothSerial.available()) {
+        char c = bluetoothSerial.read();
+        
+        // Filter non-printable characters (show hex codes instead)
+        if (c >= 32 && c <= 126) {  // Printable ASCII range
+            debugBuffer += c;
+        } else {
+            char hex[5];
+            sprintf(hex, "[%02X]", c);  // Show hex code
+            debugBuffer += hex;
+        }
+        
+        // Check for line endings or buffer size limit
+        if (c == '\n' || debugBuffer.length() >= 64) {
+            printDebugBuffer(debugBuffer);
+            debugBuffer = "";
+        }
+    }
+    
+    // Periodic flush if no line ending
+    if (millis() - lastPrint >= printInterval && debugBuffer.length() > 0) {
+        printDebugBuffer(debugBuffer);
+        debugBuffer = "";
+    }
+}
+
+// Helper function for formatted output
+void SVKTunerApp::printDebugBuffer(String &buffer) {
+    if (buffer.length() == 0) return;
+    
+    Serial.print("[BT] ");
+    Serial.print(millis());
+    Serial.print("ms: ");
+    
+    // Split into multiple lines if contains newlines
+    int startIdx = 0;
+    int nlPos;
+    while ((nlPos = buffer.indexOf('\n', startIdx)) >= 0) {
+        Serial.println(buffer.substring(startIdx, nlPos));
+        Serial.print("     ");  // Indent continuation lines
+        startIdx = nlPos + 1;
+    }
+    
+    // Print remaining content
+    if (startIdx < buffer.length()) {
+        Serial.println(buffer.substring(startIdx));
+    }
+    
+    buffer = "";
+}

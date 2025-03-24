@@ -15,6 +15,8 @@ void setup() {
 
 void loop() {
 
+    tuner.debugBluetoothStream();
+
     if (tuner.isStartSignalReceived()) {
         Serial.println("START command received");
     }

@@ -26,6 +26,9 @@ void setup() {
 }
 
 void loop() {
+
+    tuner.debugBluetoothStream();
+    
 #if ENABLE_START_STOP
     // Check for start signal
     if (tuner.isStartSignalReceived()) {

@@ -56,6 +56,9 @@ public:
     float readCustomVariable(String name);
     void logCustomVariables();
 
+    /// @brief Bluetooth debugging to Serial monitor
+    void debugBluetoothStream();
+
 private:
     // Stored Reference to a SoftwareSerial object
     SoftwareSerial& bluetoothSerial;
@@ -85,6 +88,9 @@ private:
     float parseValue(String data, const String& prefix);
     /// Helper function for reading data from bluetooth till new line detected
     String readBluetoothLine();
+    /// @brief Prints Bluetooth data buffer for debugging
+    /// @param buffer Bluetooth 64 byte buffer
+    void printDebugBuffer(String &buffer);
 
     /// @brief Tracks the last write time
     unsigned long lastWriteTime = 0;
