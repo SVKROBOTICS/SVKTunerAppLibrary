@@ -15,16 +15,7 @@ void setup() {
 
 void loop() {
 
-    tuner.debugBluetoothStream();
-
-    if (tuner.isStartSignalReceived()) {
-        Serial.println("START command received");
-    }
-
-    if (tuner.isStopSignalReceived()) {
-        Serial.println("STOP command received");
-    }
-
+    // Checks the bluetooth buffer and updates the parameters
     if (bluetoothSerial.available()) {
         tuner.updateParameters();
         tuner.logAllParameters();

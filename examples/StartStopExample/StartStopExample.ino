@@ -26,19 +26,17 @@ void setup() {
 }
 
 void loop() {
-
-    tuner.debugBluetoothStream();
     
 #if ENABLE_START_STOP
-    // Check for start signal
+    tuner.getLastCommand(); // Refresh the buffer
+    
     if (tuner.isStartSignalReceived()) {
         Serial.println("Start signal received!");
     }
-
-    // Check for stop signal
-    if (tuner.isStopSignalReceived()) {
+    else if (tuner.isStopSignalReceived()) {
         Serial.println("Stop signal received!");
     }
+    
 #endif
 
     delay(100);

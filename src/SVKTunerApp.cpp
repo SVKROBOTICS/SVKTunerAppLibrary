@@ -141,26 +141,19 @@ bool SVKTunerApp::processIncomingPacket(String packet)
     return false;
 }
 
-bool SVKTunerApp::isStartSignalReceived()
-{
+String SVKTunerApp::getLastCommand() {
     if (bluetoothSerial.available()) {
-        lastReceivedData = readBluetoothLine(); // Read the incoming data
-        if (lastReceivedData == "!START!") {
-            return true; // Start signal received
-        }
+        lastReceivedData = readBluetoothLine();
     }
-    return false; // No start signal
+    return lastReceivedData;
 }
 
-bool SVKTunerApp::isStopSignalReceived()
-{
-    if (bluetoothSerial.available()) {
-        lastReceivedData = readBluetoothLine(); // Read the incoming data
-        if (lastReceivedData == "!STOP!") {
-            return true; // Stop signal received
-        }
-    }
-    return false; // No stop signal
+bool SVKTunerApp::isStartSignalReceived() {
+    return getLastCommand() == "!START!";
+}
+
+bool SVKTunerApp::isStopSignalReceived() {
+    return getLastCommand() == "!STOP!";
 }
 
 void SVKTunerApp::updateParameters()
