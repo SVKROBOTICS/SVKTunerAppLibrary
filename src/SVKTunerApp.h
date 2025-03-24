@@ -13,6 +13,7 @@ public:
     void begin(long baudRate);
 
     // Start-Stop functionality
+    String getLastCommand();
     bool isStartSignalReceived();
     bool isStopSignalReceived();
 
