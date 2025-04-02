@@ -17,8 +17,8 @@ void loop() {
 
     // Checks the bluetooth buffer and updates the parameters
     if (bluetoothSerial.available()) {
-        tuner.updateParameters();
         tuner.logAllParameters();
+        tuner.updateParameters();
     }
 
     delay(100); // Prevent CPU overload

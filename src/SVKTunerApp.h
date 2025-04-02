@@ -89,6 +89,8 @@ private:
     float parseValue(String data, const String& prefix);
     /// Helper function for reading data from bluetooth till new line detected
     String readBluetoothLine();
+    /// @brief Helper function for correctly checking changes based on EEPROM values
+    void writeParameterBatch(float kp, float ki, float kd, int baseSpeed, int maxSpeed, int acceleration);
     /// @brief Prints Bluetooth data buffer for debugging
     /// @param buffer Bluetooth 64 byte buffer
     void printDebugBuffer(String &buffer);

@@ -149,11 +149,11 @@ String SVKTunerApp::getLastCommand() {
 }
 
 bool SVKTunerApp::isStartSignalReceived() {
-    return getLastCommand() == "!START!";
+    return getLastCommand() == "!START!\n";
 }
 
 bool SVKTunerApp::isStopSignalReceived() {
-    return getLastCommand() == "!STOP!";
+    return getLastCommand() == "!STOP!\n";
 }
 
 void SVKTunerApp::updateParameters()
@@ -164,75 +164,155 @@ void SVKTunerApp::updateParameters()
     }
 }
 
-void SVKTunerApp::parseData(String data)
-{
-    // Variables to store parsed values
-    float kpValue = 0.0, kiValue = 0.0, kdValue = 0.0;
-    int baseSpeedValue = 0, maxSpeedValue = 0, accelerationValue = 0;
+void SVKTunerApp::parseData(String data) {
+    Serial.print("Processing data batch: ");
+    Serial.println(data);
 
-    // Parse fixed variables
+    // Variables to store parsed values (initialize with "no update" indicators)
+    float newKp = NAN;
+    float newKi = NAN;
+    float newKd = NAN;
+    int newBaseSpeed = -1;
+    int newMaxSpeed = -1;
+    int newAcceleration = -1;
+
+    // Parse standard parameters
     if (data.indexOf("Kp=") != -1) {
-        kpValue = parseValue(data, "Kp=");
-        if (isValidFloat(String(kpValue))) {
-            writeKp(kpValue);
-        }
+        newKp = parseValue(data, "Kp=");
+        if (!isValidFloat(String(newKp))) newKp = NAN;
     }
     if (data.indexOf("Ki=") != -1) {
-        kiValue = parseValue(data, "Ki=");
-        if (isValidFloat(String(kiValue))) {
-            writeKi(kiValue);
-        }
+        newKi = parseValue(data, "Ki=");
+        if (!isValidFloat(String(newKi))) newKi = NAN;
     }
     if (data.indexOf("Kd=") != -1) {
-        kdValue = parseValue(data, "Kd=");
-        if (isValidFloat(String(kdValue))) {
-            writeKd(kdValue);
-        }
+        newKd = parseValue(data, "Kd=");
+        if (!isValidFloat(String(newKd))) newKd = NAN;
     }
     if (data.indexOf("baseSpeed=") != -1) {
-        baseSpeedValue = (int)parseValue(data, "baseSpeed=");
-        writeBaseSpeed(baseSpeedValue);
+        newBaseSpeed = (int)parseValue(data, "baseSpeed=");
     }
     if (data.indexOf("maxSpeed=") != -1) {
-        maxSpeedValue = (int)parseValue(data, "maxSpeed=");
-        writeMaxSpeed(maxSpeedValue);
+        newMaxSpeed = (int)parseValue(data, "maxSpeed=");
     }
     if (data.indexOf("acceleration=") != -1) {
-        accelerationValue = (int)parseValue(data, "acceleration=");
-        writeAcceleration(accelerationValue);
+        newAcceleration = (int)parseValue(data, "acceleration=");
     }
+
+    // Process the batch of standard parameter updates
+    writeParameterBatch(newKp, newKi, newKd, newBaseSpeed, newMaxSpeed, newAcceleration);
 
     // Parse custom variables
     int customVarIndex = 0;
-    int customVarCount = 0; // Counter for custom variables
+    int customVarCount = 0;
+    
     while (customVarIndex != -1 && customVarCount < MAX_CUSTOM_VARS) {
-        customVarIndex = data.indexOf(',', customVarIndex); // Find the next comma
+        customVarIndex = data.indexOf(',', customVarIndex);
         if (customVarIndex != -1) {
-            customVarIndex++; // Move past the comma
+            customVarIndex++; // Move past comma
             int equalsIndex = data.indexOf('=', customVarIndex);
-            if (equalsIndex == -1) break; // No more variables
+            if (equalsIndex == -1) break;
 
             int commaIndex = data.indexOf(',', equalsIndex);
-            if (commaIndex == -1) commaIndex = data.length(); // Last variable
+            if (commaIndex == -1) commaIndex = data.length();
 
-            // Extract the variable name and value
             String varName = data.substring(customVarIndex, equalsIndex);
             String varValue = data.substring(equalsIndex + 1, commaIndex);
 
-            // Validate and store the custom variable
             if (isValidFloat(varValue)) {
-                addCustomVariable(varName, varValue.toFloat());
-                customVarCount++; // Increment the counter
+                // Check if we're in the write timeout window
+                if (millis() - lastWriteTime >= WRITE_TIMEOUT) {
+                    addCustomVariable(varName, varValue.toFloat());
+                    lastWriteTime = millis(); // Reset timeout
+                    customVarCount++;
+                    Serial.print("Added custom var: ");
+                    Serial.print(varName);
+                    Serial.print(" = ");
+                    Serial.println(varValue);
+                } else {
+                    Serial.println("Custom var update skipped due to write timeout");
+                    break; // Skip remaining custom vars in this batch
+                }
             }
-
-            // Move to the next variable
             customVarIndex = commaIndex;
         }
     }
 
-    // Log if the custom variable limit is reached
     if (customVarCount >= MAX_CUSTOM_VARS) {
         Serial.println("Custom variable limit reached!");
+    }
+}
+
+void SVKTunerApp::writeParameterBatch(float kp, float ki, float kd,
+                                    int baseSpeed, int maxSpeed, int acceleration) {
+    // Only check timeout once per batch
+    if (millis() - lastWriteTime < WRITE_TIMEOUT) {
+        Serial.println("Write timeout - skipping batch update");
+        return;
+    }
+
+    bool changesDetected = false;
+
+    // Check and update Kp
+    if (!isnan(kp)) {
+        float currentKp = readKp();
+        if (abs(kp - currentKp) > 0.001f) { // Floating point comparison threshold
+            writeKp(kp);
+            changesDetected = true;
+        }
+    }
+
+    // Check and update Ki
+    if (!isnan(ki)) {
+        float currentKi = readKi();
+        if (abs(ki - currentKi) > 0.001f) {
+            writeKi(ki);
+            changesDetected = true;
+        }
+    }
+
+    // Check and update Kd
+    if (!isnan(kd)) {
+        float currentKd = readKd();
+        if (abs(kd - currentKd) > 0.001f) {
+            writeKd(kd);
+            changesDetected = true;
+        }
+    }
+
+    // Check and update baseSpeed
+    if (baseSpeed >= 0) { // Using -1 as "no update" indicator
+        int currentBaseSpeed = readBaseSpeed();
+        if (baseSpeed != currentBaseSpeed) {
+            writeBaseSpeed(baseSpeed);
+            changesDetected = true;
+        }
+    }
+
+    // Check and update maxSpeed
+    if (maxSpeed >= 0) {
+        int currentMaxSpeed = readMaxSpeed();
+        if (maxSpeed != currentMaxSpeed) {
+            writeMaxSpeed(maxSpeed);
+            changesDetected = true;
+        }
+    }
+
+    // Check and update acceleration
+    if (acceleration >= 0) {
+        int currentAcceleration = readAcceleration();
+        if (acceleration != currentAcceleration) {
+            writeAcceleration(acceleration);
+            changesDetected = true;
+        }
+    }
+
+    // Only update lastWriteTime if actual changes were made
+    if (changesDetected) {
+        lastWriteTime = millis();
+        Serial.println("Batch update completed successfully");
+    } else {
+        Serial.println("No parameter changes detected in batch");
     }
 }
 
@@ -318,7 +398,6 @@ int SVKTunerApp::readAcceleration()
 {
     return readIntFromEEPROM(ACCELERATION_ADDRESS);
 }
-
 
 // Functions to log PID values to Serial Monitor
 void SVKTunerApp::logKp()
@@ -477,11 +556,16 @@ String SVKTunerApp::readBluetoothLine() {
     String data = "";
     while (bluetoothSerial.available()) {
         char c = bluetoothSerial.read();
+        
+        // Stop completely if we hit newline
         if (c == '\n') break;
-        data += c;
+        
+        // Only add non-whitespace characters
+        if (!isWhitespace(c)) {
+            data += c;
+        }
     }
-    data.trim();  // Modify in-place
-    return data;  // Then return the modified String
+    return data;
 }
 
 void SVKTunerApp::debugBluetoothStream() {
