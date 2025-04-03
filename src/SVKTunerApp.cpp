@@ -149,11 +149,13 @@ String SVKTunerApp::getLastCommand() {
 }
 
 bool SVKTunerApp::isStartSignalReceived() {
-    return getLastCommand() == "!START!\n";
+    String result = getLastCommand();
+    return result == "!START!\n";
 }
 
 bool SVKTunerApp::isStopSignalReceived() {
-    return getLastCommand() == "!STOP!\n";
+    String result = getLastCommand();
+    return result == "!STOP!\n";
 }
 
 void SVKTunerApp::updateParameters()

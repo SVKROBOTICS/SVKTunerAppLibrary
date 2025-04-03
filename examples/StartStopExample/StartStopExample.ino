@@ -4,8 +4,6 @@
  * start-stop function.
  */
 
-// Define macro to enable or disable start-stop functionality
-#define ENABLE_START_STOP 1 // Set to 1 to enable, 0 to disable
 
 #include <SVKTunerApp.h>
 #include <SoftwareSerial.h>
@@ -27,7 +25,6 @@ void setup() {
 
 void loop() {
     
-#if ENABLE_START_STOP
     tuner.getLastCommand(); // Refresh the buffer
     
     if (tuner.isStartSignalReceived()) {
@@ -37,7 +34,5 @@ void loop() {
         Serial.println("Stop signal received!");
     }
     
-#endif
-
     delay(100);
 }
