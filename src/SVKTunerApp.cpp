@@ -144,6 +144,8 @@ bool SVKTunerApp::processIncomingPacket(String packet)
 String SVKTunerApp::getLastCommand() {
     if (bluetoothSerial.available()) {
         _lastReceivedData = readBluetoothLine();
+        Serial.print("Received: ");  // DEBUG
+        Serial.println(_lastReceivedData);  // DEBUG
     }
     return _lastReceivedData;
 }
