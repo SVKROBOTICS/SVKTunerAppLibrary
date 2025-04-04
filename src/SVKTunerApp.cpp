@@ -2,7 +2,7 @@
 
 // =============== DEBUG CONFIGURATION ===============
 // Uncomment the following line to enable debug mode
-// #define SVKTUNER_DEBUG 
+#define SVKTUNER_DEBUG 
 
 // Debug output macros that only compile when debug is enabled
 #ifdef SVKTUNER_DEBUG
@@ -621,7 +621,7 @@ void SVKTunerApp::debugBluetoothStream() {
     while (bluetoothSerial.available()) {
         // Check if we have buffer space remaining
         if (debugBuffer.length() >= maxBufferSize) {
-            printDebugLine("[BUFFER FULL] " + debugBuffer);
+            printDebugBuffer("[BUFFER FULL] " + debugBuffer);
             debugBuffer = "";
         }
 
@@ -631,7 +631,7 @@ void SVKTunerApp::debugBluetoothStream() {
         // Handle newline as message terminator
         if (c == '\n') {
             if (debugBuffer.length() > 0) {
-                printDebugLine(debugBuffer);
+                printDebugBuffer(debugBuffer);
                 debugBuffer = "";
             }
             continue;
@@ -654,12 +654,12 @@ void SVKTunerApp::debugBluetoothStream() {
 
     // Handle timeout for incomplete messages
     if (debugBuffer.length() > 0 && (millis() - lastCharTime > timeout)) {
-        printDebugLine("[TIMEOUT] " + debugBuffer);
+        printDebugBuffer("[TIMEOUT] " + debugBuffer);
         debugBuffer = "";
     }
 }
 
-void SVKTunerApp::printDebugLine(const String &message) {
+void SVKTunerApp::printDebugBuffer(String &message) {
     // Split long messages to respect Serial buffer
     const int chunkSize = 60;
     for (int i = 0; i < message.length(); i += chunkSize) {
