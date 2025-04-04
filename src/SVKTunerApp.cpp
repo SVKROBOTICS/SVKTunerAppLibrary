@@ -555,14 +555,24 @@ void SVKTunerApp::logCustomVariables()
 }
 
 String SVKTunerApp::readBluetoothLine() {
-    String data = "";
+    static String buffer = "";  // Persistent buffer between calls
+    
     while (bluetoothSerial.available()) {
         char c = bluetoothSerial.read();
-        if (c == '\n') break;
-        data += c;
+        
+        if (c == '\n') {
+            String completeMessage = buffer;
+            buffer = "";  // Reset for next message
+            completeMessage.trim();
+            DEBUG_PRINTLN("[BT] Complete message: " + completeMessage);
+            return completeMessage;
+        }
+        else {
+            buffer += c;  // Accumulate characters
+        }
     }
-    data.trim();  // Remove any leading/trailing whitespace including \r
-    return data;
+    
+    return "";  // Return empty if no complete message yet
 }
 
 void SVKTunerApp::debugBluetoothStream() {
