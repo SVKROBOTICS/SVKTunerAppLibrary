@@ -1,29 +1,25 @@
-/* Example code for Reading/Writing PID and Robot Parameters using the SVK Tuner App for mobiles 
- * Permanently writes values to parameters/custom variables to EEPROM
-*/
-
 #include <SVKTunerApp.h>
+#include <SoftwareSerial.h>
 
-SVKTunerApp tuner;
+#define BT_RX 3 // Arduino RX Pin
+#define BT_TX 2 // Arduino TX Pin
+
+SoftwareSerial bluetoothSerial(BT_RX, BT_TX);
+SVKTunerApp tuner(bluetoothSerial);
 
 void setup() {
-    Serial.begin(9600); // Initialize Serial communication for debugging
-    tuner.begin(9600);  // Initialize Bluetooth communication
-
-    Serial.println("SVKTunerApp Example: WritePIDValues");
-    Serial.println("Waiting for data from HC-05...");
+    Serial.begin(9600);
+    tuner.begin(9600); 
+    Serial.println("SVKTuner Ready");
 }
 
 void loop() {
-    // Check if new data is available from HC-05
-    if (Serial.available()) 
-    {
-        // Process the new data and update EEPROM
-        tuner.updateParameters();
 
-        // Log the current PID values and custom variables
+    // Checks the bluetooth buffer and updates the parameters
+    if (bluetoothSerial.available()) {
         tuner.logAllParameters();
+        tuner.updateParameters();
     }
 
-    delay(100); // Small delay to reduce CPU usage
+    delay(100); // Prevent CPU overload
 }

@@ -2,21 +2,27 @@
 
 #include <Arduino.h>
 #include <EEPROM.h>
+#include <SoftwareSerial.h>
 
 class SVKTunerApp {
 public:
-    // Constructor
-    SVKTunerApp();
-    /// Initialize Serial communication
+    // Constructor stores a reference to the SoftwareSerial instance
+    SVKTunerApp(SoftwareSerial& serial);
+
+    // Begins connection
     void begin(long baudRate);
 
     // Start-Stop functionality
+    String getLastCommand();
     bool isStartSignalReceived();
     bool isStopSignalReceived();
 
     /// Read Bluetooth data and update EEPROM
     void updateParameters();
 
+    // Packet handling functions
+    bool receiveDataPackets();
+    
     /// Functions to read PID values from EEPROM
     float readKp();
     float readKi();
@@ -51,10 +57,23 @@ public:
     float readCustomVariable(String name);
     void logCustomVariables();
 
-    /// Parse received data
-    void parseData(String data);
+    /// @brief Bluetooth debugging to Serial monitor
+    void debugBluetoothStream();
 
 private:
+    // Stored Reference to a SoftwareSerial object
+    SoftwareSerial& bluetoothSerial;
+    
+    // Packet handling variables
+    String _packetBuffer;
+    int _currentPacketNumber;
+    int _totalPacketsExpected;
+    unsigned long _lastPacketTime;
+    bool _packetReceptionInProgress;
+
+    // Start-Stop signals
+    String _lastReceivedData;
+    
     /// Write float to EEPROM
     void writeFloatToEEPROM(int address, float value);
     /// Read float from EEPROM
@@ -63,11 +82,24 @@ private:
     void writeIntToEEPROM(int address, int value);
     /// Read int from EEPROM
     int readIntFromEEPROM(int address);
-    /// Helper function to parse fixed variable data
-    void parseFixedVariable(String data, const String& prefix, void (SVKTunerApp::*writeFunction)(float), SVKTunerApp* instance);
+    /// Parse received data
+    void parseData(String data);
+    /// Process incoming packet
+    bool processIncomingPacket(String packet);
+    /// Reset packet state
+    void resetPacketState();
+    /// Helper function to parse fixed variable value
+    float parseValue(String data, const String& prefix);
+    /// Helper function for reading data from bluetooth till new line detected
+    String readBluetoothLine();
+    /// @brief Helper function for correctly checking changes based on EEPROM values
+    void writeParameterBatch(float kp, float ki, float kd, int baseSpeed, int maxSpeed, int acceleration);
+    /// @brief Prints Bluetooth data buffer for debugging
+    /// @param buffer Bluetooth 64 byte buffer
+    void printDebugBuffer(String &buffer);
 
     /// @brief Tracks the last write time
-    unsigned long _lastWriteTime = 0;
+    unsigned long lastWriteTime = 0;
     /// 5-second timeout
     static const unsigned long WRITE_TIMEOUT = 5000;
 
@@ -92,6 +124,4 @@ private:
         float value;   /// Variable value
     };
 
-    // Start-Stop signals
-    String _lastReceivedData; // Store the last received data for start/stop checks
 };
