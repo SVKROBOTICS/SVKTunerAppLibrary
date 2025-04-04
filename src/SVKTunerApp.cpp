@@ -16,11 +16,11 @@ SVKTunerApp::SVKTunerApp(SoftwareSerial& serial)
 
 void SVKTunerApp::resetPacketState()
 {
-    packetBuffer = "";
-    currentPacketNumber = 0;
-    totalPacketsExpected = 0;
-    lastPacketTime = 0;
-    packetReceptionInProgress = false;
+    _packetBuffer = "";
+    _currentPacketNumber = 0;
+    _totalPacketsExpected = 0;
+    _lastPacketTime = 0;
+    _packetReceptionInProgress = false;
 }
 
 void SVKTunerApp::begin(long baudRate)
@@ -36,18 +36,18 @@ bool SVKTunerApp::receiveDataPackets() {
         char c = bluetoothSerial.read();
         
         // Skip any characters until we get a start marker
-        if (!packetReceptionInProgress && c != START_MARKER) {
+        if (!_packetReceptionInProgress && c != START_MARKER) {
             continue; // Ignore garbage before packet starts
         }
         
         if (c == START_MARKER) {
             incomingData = "";
-            packetReceptionInProgress = true;
+            _packetReceptionInProgress = true;
             continue;
         }
         
-        if (c == END_MARKER && packetReceptionInProgress) {
-            packetReceptionInProgress = false;
+        if (c == END_MARKER && _packetReceptionInProgress) {
+            _packetReceptionInProgress = false;
             
             // Basic packet format validation
             if (incomingData.length() < 5) { // Minimum valid packet: "0|1|d"
@@ -64,7 +64,7 @@ bool SVKTunerApp::receiveDataPackets() {
             continue;
         }
         
-        if (packetReceptionInProgress) {
+        if (_packetReceptionInProgress) {
             // Prevent buffer overflow
             if (incomingData.length() < MAX_PACKET_SIZE) {
                 incomingData += c;
@@ -76,7 +76,7 @@ bool SVKTunerApp::receiveDataPackets() {
         }
     }
     
-    if (packetReceptionInProgress && millis() - lastPacketTime > PACKET_TIMEOUT) {
+    if (_packetReceptionInProgress && millis() - _lastPacketTime > PACKET_TIMEOUT) {
         Serial.println("Packet timeout - resetting");
         resetPacketState();
         return false;
@@ -108,14 +108,14 @@ bool SVKTunerApp::processIncomingPacket(String packet)
     
     // If this is the first packet, reset the buffer
     if (packetNum == 0) {
-        packetBuffer = chunk;
-        totalPacketsExpected = totalPackets;
-        currentPacketNumber = 1;
+        _packetBuffer = chunk;
+        _totalPacketsExpected = totalPackets;
+        _currentPacketNumber = 1;
     } 
     // If it's the expected next packet
-    else if (packetNum == currentPacketNumber) {
-        packetBuffer += chunk;
-        currentPacketNumber++;
+    else if (packetNum == _currentPacketNumber) {
+        _packetBuffer += chunk;
+        _currentPacketNumber++;
     } 
     // Out of sequence packet
     else {
@@ -128,12 +128,12 @@ bool SVKTunerApp::processIncomingPacket(String packet)
     bluetoothSerial.print(packetNum);
     bluetoothSerial.println(END_MARKER);
     
-    lastPacketTime = millis();
+    _lastPacketTime = millis();
     
     // Check if we've received all packets
-    if (currentPacketNumber >= totalPacketsExpected) {
+    if (_currentPacketNumber >= _totalPacketsExpected) {
         // Process the complete message
-        parseData(packetBuffer);
+        parseData(_packetBuffer);
         resetPacketState();
         return true;
     }
@@ -143,19 +143,17 @@ bool SVKTunerApp::processIncomingPacket(String packet)
 
 String SVKTunerApp::getLastCommand() {
     if (bluetoothSerial.available()) {
-        lastReceivedData = readBluetoothLine();
+        _lastReceivedData = readBluetoothLine();
     }
-    return lastReceivedData;
+    return _lastReceivedData;
 }
 
 bool SVKTunerApp::isStartSignalReceived() {
-    String result = getLastCommand();
-    return result == "!START!\n";
+    return _lastReceivedData == "!START!";
 }
 
 bool SVKTunerApp::isStopSignalReceived() {
-    String result = getLastCommand();
-    return result == "!STOP!\n";
+    return _lastReceivedData == "!STOP!";
 }
 
 void SVKTunerApp::updateParameters()
@@ -558,15 +556,10 @@ String SVKTunerApp::readBluetoothLine() {
     String data = "";
     while (bluetoothSerial.available()) {
         char c = bluetoothSerial.read();
-        
-        // Stop completely if we hit newline
         if (c == '\n') break;
-        
-        // Only add non-whitespace characters
-        if (!isWhitespace(c)) {
-            data += c;
-        }
+        data += c;
     }
+    data.trim();  // Remove any leading/trailing whitespace including \r
     return data;
 }
 

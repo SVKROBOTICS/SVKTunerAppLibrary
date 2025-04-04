@@ -65,11 +65,14 @@ private:
     SoftwareSerial& bluetoothSerial;
     
     // Packet handling variables
-    String packetBuffer;
-    int currentPacketNumber;
-    int totalPacketsExpected;
-    unsigned long lastPacketTime;
-    bool packetReceptionInProgress;
+    String _packetBuffer;
+    int _currentPacketNumber;
+    int _totalPacketsExpected;
+    unsigned long _lastPacketTime;
+    bool _packetReceptionInProgress;
+
+    // Start-Stop signals
+    String _lastReceivedData;
     
     /// Write float to EEPROM
     void writeFloatToEEPROM(int address, float value);
@@ -121,6 +124,4 @@ private:
         float value;   /// Variable value
     };
 
-    // Start-Stop signals
-    String lastReceivedData; // Store the last received data for start/stop checks
 };
