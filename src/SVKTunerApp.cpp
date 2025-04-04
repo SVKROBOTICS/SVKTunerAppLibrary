@@ -1,5 +1,21 @@
 #include "./SVKTunerApp.h"
 
+// =============== DEBUG CONFIGURATION ===============
+// Uncomment the following line to enable debug mode
+// #define SVKTUNER_DEBUG 
+
+// Debug output macros that only compile when debug is enabled
+#ifdef SVKTUNER_DEBUG
+  #define DEBUG_PRINT(...) Serial.print(__VA_ARGS__)
+  #define DEBUG_PRINTLN(...) Serial.println(__VA_ARGS__)
+  #define DEBUG_PRINTF(...) Serial.printf(__VA_ARGS__)
+#else
+  #define DEBUG_PRINT(...)
+  #define DEBUG_PRINTLN(...)
+  #define DEBUG_PRINTF(...)
+#endif
+// ==================================================
+
 #define START_MARKER '<'
 #define END_MARKER '>'
 #define SEPARATOR '|'
@@ -144,19 +160,39 @@ bool SVKTunerApp::processIncomingPacket(String packet)
 String SVKTunerApp::getLastCommand() {
     if (bluetoothSerial.available()) {
         _lastReceivedData = readBluetoothLine();
-        Serial.print("Received: ");  // DEBUG
-        Serial.println(_lastReceivedData);  // DEBUG
+        
+        #ifdef SVKTUNER_DEBUG
+        DEBUG_PRINT("Received: ");
+        DEBUG_PRINTLN(_lastReceivedData);
+        #endif
     }
     return _lastReceivedData;
 }
 
 bool SVKTunerApp::isStartSignalReceived() {
-    return _lastReceivedData == "!START!";
+    bool result = (_lastReceivedData == "!START!");
+    
+    #ifdef SVKTUNER_DEBUG
+    DEBUG_PRINT("Start check: ");
+    DEBUG_PRINT(_lastReceivedData);
+    DEBUG_PRINT(" == '!START!' → ");
+    DEBUG_PRINTLN(result ? "Match" : "No match");
+    #endif
+    
+    return result;
 }
 
 bool SVKTunerApp::isStopSignalReceived() {
-    return _lastReceivedData == "!STOP!";
-}
+    bool result = (_lastReceivedData == "!STOP!");
+    
+    #ifdef SVKTUNER_DEBUG
+    DEBUG_PRINT("Stop check: ");
+    DEBUG_PRINT(_lastReceivedData);
+    DEBUG_PRINT(" == '!STOP!' → ");
+    DEBUG_PRINTLN(result ? "Match" : "No match");
+    #endif
+    
+    return result;}
 
 void SVKTunerApp::updateParameters()
 {
