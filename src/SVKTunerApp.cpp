@@ -192,7 +192,8 @@ bool SVKTunerApp::isStopSignalReceived() {
     DEBUG_PRINTLN(result ? "Match" : "No match");
     #endif
     
-    return result;}
+    return result;
+}
 
 void SVKTunerApp::updateParameters()
 {
@@ -613,57 +614,58 @@ String SVKTunerApp::readBluetoothLine() {
 
 void SVKTunerApp::debugBluetoothStream() {
     static String debugBuffer;
-    static unsigned long lastPrint = 0;
-    const unsigned long printInterval = 100; // ms between prints
-    
-    // Read all available bytes
+    static unsigned long lastCharTime = millis();
+    const unsigned long timeout = 100;  // ms timeout for incomplete messages
+    const int maxBufferSize = 48;      // Leave room for hex conversions (64-16)
+
     while (bluetoothSerial.available()) {
-        char c = bluetoothSerial.read();
-        
-        // Filter non-printable characters (show hex codes instead)
-        if (c >= 32 && c <= 126) {  // Printable ASCII range
-            debugBuffer += c;
-        } else {
-            char hex[5];
-            sprintf(hex, "[%02X]", c);  // Show hex code
-            debugBuffer += hex;
-        }
-        
-        // Check for line endings or buffer size limit
-        if (c == '\n' || debugBuffer.length() >= 64) {
-            printDebugBuffer(debugBuffer);
+        // Check if we have buffer space remaining
+        if (debugBuffer.length() >= maxBufferSize) {
+            printDebugLine("[BUFFER FULL] " + debugBuffer);
             debugBuffer = "";
         }
+
+        char c = bluetoothSerial.read();
+        lastCharTime = millis();
+
+        // Handle newline as message terminator
+        if (c == '\n') {
+            if (debugBuffer.length() > 0) {
+                printDebugLine(debugBuffer);
+                debugBuffer = "";
+            }
+            continue;
+        }
+
+        // Skip carriage returns
+        if (c == '\r') continue;
+
+        // Handle printable ASCII
+        if (c >= 32 && c <= 126) {
+            debugBuffer += c;
+        } 
+        // Format non-printables as hex
+        else {
+            char hex[5];
+            snprintf(hex, sizeof(hex), "[%02X]", c);
+            debugBuffer += hex;
+        }
     }
-    
-    // Periodic flush if no line ending
-    if (millis() - lastPrint >= printInterval && debugBuffer.length() > 0) {
-        printDebugBuffer(debugBuffer);
+
+    // Handle timeout for incomplete messages
+    if (debugBuffer.length() > 0 && (millis() - lastCharTime > timeout)) {
+        printDebugLine("[TIMEOUT] " + debugBuffer);
         debugBuffer = "";
     }
 }
 
-// Helper function for formatted output
-void SVKTunerApp::printDebugBuffer(String &buffer) {
-    if (buffer.length() == 0) return;
-    
-    Serial.print("[BT] ");
-    Serial.print(millis());
-    Serial.print("ms: ");
-    
-    // Split into multiple lines if contains newlines
-    int startIdx = 0;
-    int nlPos;
-    while ((nlPos = buffer.indexOf('\n', startIdx)) >= 0) {
-        Serial.println(buffer.substring(startIdx, nlPos));
-        Serial.print("     ");  // Indent continuation lines
-        startIdx = nlPos + 1;
+void SVKTunerApp::printDebugLine(const String &message) {
+    // Split long messages to respect Serial buffer
+    const int chunkSize = 60;
+    for (int i = 0; i < message.length(); i += chunkSize) {
+        Serial.print("[BT] ");
+        Serial.print(millis());
+        Serial.print("ms: ");
+        Serial.println(message.substring(i, i + chunkSize));
     }
-    
-    // Print remaining content
-    if (startIdx < buffer.length()) {
-        Serial.println(buffer.substring(startIdx));
-    }
-    
-    buffer = "";
 }
