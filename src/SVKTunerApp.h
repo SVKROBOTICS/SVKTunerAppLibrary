@@ -58,7 +58,7 @@ public:
     /// @brief Read Kd value
     float readKd();
 
-    /// Functions to read other parameters from EEPROM
+    /// Functions to read speed parameters from EEPROM
 
     /// @brief Read robot base Speed
     int readBaseSpeed();
@@ -66,6 +66,11 @@ public:
     int readMaxSpeed();
     /// @brief Read robot acceleration
     int readAcceleration();
+
+    /// @brief Function to read custom variable values from EEPROM
+    /// @param index Index number of custom variable to select
+    /// @return Float value of selected custom variable
+    int readCustomVariable(int index);
 
     /// @brief Returns Robot State, either STOPPED or RUNNING
     /// @return Start Stop Enum Value ( STOPPED || RUNNING )

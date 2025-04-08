@@ -2,7 +2,7 @@
 
 // =============== DEBUG CONFIGURATION ===============
 // Uncomment the following line to enable debug mode
-#define SVKTUNER_DEBUG 
+// #define SVKTUNER_DEBUG 
 
 // Debug output macros that only compile when debug is enabled
 #ifdef SVKTUNER_DEBUG
@@ -107,6 +107,19 @@ int SVKTunerApp::readMaxSpeed()
 int SVKTunerApp::readAcceleration()
 {
     return readIntFromEEPROM(ACCELERATION_ADDRESS);
+}
+
+int SVKTunerApp::readCustomVariable(int index)
+{
+    if(index < MAX_CUSTOM_VARS)
+    {
+        return readFloatFromBluetooth(CUSTOM_VAR_START_ADDRESS + (index * CUSTOM_VAR_SIZE));
+    }
+    else
+    {
+        Serial.println("Error, max amount of custom variables is 5");
+        return;
+    }
 }
 
 void SVKTunerApp::logKp()
