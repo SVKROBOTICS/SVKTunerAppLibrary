@@ -239,19 +239,11 @@ int SVKTunerApp::readIntFromBluetooth() {
 void SVKTunerApp::startRobot() {
     DEBUG_PRINTLN("Starting robot...");
     _currentState = RUNNING;
-    sendStatusUpdate("Robot started.");
 }
 
 void SVKTunerApp::stopRobot() {
     DEBUG_PRINTLN("Stopping robot...");
     _currentState = STOPPED;
-    sendStatusUpdate("Robot stopped.");
-}
-
-void SVKTunerApp::sendStatusUpdate(const String& statusMessage) {
-    // Send status message back over Bluetooth (optional)
-    bluetoothSerial.print("STATUS: ");
-    bluetoothSerial.println(statusMessage);
 }
 
 void SVKTunerApp::writeFloatToEEPROM(int address, float value)
