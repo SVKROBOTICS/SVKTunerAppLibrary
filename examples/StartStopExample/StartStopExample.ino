@@ -1,5 +1,5 @@
-/* SVK Tuner Start/Stop Test with Debug Support */
-#define SVKTUNER_DEBUG  // Comment out to disable debug prints
+// Comment out to disable debug prints
+#define SVKTUNER_DEBUG  
 
 #include <SVKTunerApp.h>
 #include <SoftwareSerial.h>
@@ -12,7 +12,7 @@ SoftwareSerial bluetoothSerial(BT_RX, BT_TX);
 SVKTunerApp tuner(bluetoothSerial);
 
 void setup() {
-    Serial.begin(115200);  // Faster baud for debug output
+    Serial.begin(9600);
     bluetoothSerial.begin(9600);
     
     #ifdef SVKTUNER_DEBUG
@@ -33,18 +33,19 @@ void loop() {
     }
     #endif
 
-    // Process commands
-    String command = tuner.getLastCommand();
-    
-    if (tuner.isStartSignalReceived()) {
-        Serial.println(F("ACTION: Start command received!"));
-        // Add your start logic here
-    } 
-    else if (tuner.isStopSignalReceived()) {
-        Serial.println(F("ACTION: Stop command received!"));
-        // Add your stop logic here
+    // Process only start and stop commands
+    tuner.processStartStopCommands();
+
+    if(tuner.getRobotState() == RUNNING) {
+        Serial.println("Robot is running");
     }
-    
+    else if(tuner.getRobotState() == STOPPED) {
+        Serial.println("Robot is stopped");
+    }
+    else {
+        Serial.println("Unknown State");
+    }
+
     #ifdef SVKTUNER_DEBUG
     // Additional debug for connection health
     static unsigned long lastDebug = 0;
