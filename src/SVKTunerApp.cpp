@@ -40,19 +40,23 @@ bool SVKTunerApp::processBluetoothData() {
     while (bluetoothSerial.available()) {
         byte receivedByte = bluetoothSerial.read();
 
+        DEBUG_PRINTLN("Received Byte: " + String(receivedByte));  // Debugging to see the received byte
+        
         // Check for the command header bytes and process accordingly
         if (receivedByte == PARAM_IDS.PID_PARAM_HEADER) {
+            DEBUG_PRINTLN("Processing PID data...");
             parsePidData();
         } else if (receivedByte == PARAM_IDS.SPEED_PARAM_HEADER) {
+            DEBUG_PRINTLN("Processing Speed data...");
             parseSpeedData();
         } else if (receivedByte == PARAM_IDS.CUSTOM_VAR_HEADER) {
+            DEBUG_PRINTLN("Processing Custom Variable data...");
             parseCustomVariableData();
-        } else if (receivedByte == PARAM_IDS.COMMAND_START) {
-            startRobot();
-        } else if (receivedByte == PARAM_IDS.COMMAND_STOP) {
-            stopRobot();
+        } else {
+            DEBUG_PRINTLN("Received Command Byte not correct: " + String(receivedByte));
         }
     }
+    _lastWriteTime = millis(); // Update the last write time
     return true; // Return true if data was processed
 }
 
@@ -71,6 +75,7 @@ bool SVKTunerApp::processStartStopCommands() {
             stopRobot();  // Call stopRobot function to stop the robot
         }
     }
+    _lastWriteTime = millis(); // Update the last write time
     return true; // Return true if data was processed
 }
 
@@ -122,11 +127,32 @@ void SVKTunerApp::logKd()
     Serial.println(readKd());
 }
 
+void SVKTunerApp::logBaseSpeed()
+{
+    Serial.print("baseSpeed: ");
+    Serial.println(readBaseSpeed());
+}
+
+void SVKTunerApp::logMaxSpeed()
+{
+    Serial.print("maxSpeed: ");
+    Serial.println(readMaxSpeed());
+}
+
+void SVKTunerApp::logAcceleration()
+{
+    Serial.print("acceleration: ");
+    Serial.println(readAcceleration());
+}
+
 void SVKTunerApp::logAllParameters()
 {
     logKp();
     logKi();
     logKd();
+    logBaseSpeed();
+    logMaxSpeed();
+    logAcceleration();
     logCustomVariables();
 }
 
@@ -136,88 +162,91 @@ void SVKTunerApp::logAllParameters()
 
 
 void SVKTunerApp::parsePidData() {
-    byte pidType = bluetoothSerial.read();  // Read the next byte for the PID type (KP, KI, KD)
-    
-    switch (pidType) {
-        case PARAM_IDS.KP:
-            float newKp = readFloatFromBluetooth();
-            writeKp(newKp);  // Write Kp to EEPROM
-            DEBUG_PRINTLN("Updated Kp: " + String(newKp));
-            break;
-        case PARAM_IDS.KI:
-            float newKi = readFloatFromBluetooth();
-            writeKi(newKi);  // Write Ki to EEPROM
-            DEBUG_PRINTLN("Updated Ki: " + String(newKi));
-            break;
-        case PARAM_IDS.KD:
-            float newKd = readFloatFromBluetooth();
-            writeKd(newKd);  // Write Kd to EEPROM
-            DEBUG_PRINTLN("Updated Kd: " + String(newKd));
-            break;
-        default:
-            DEBUG_PRINTLN("Unknown PID type.");
-            break;
+    // Process KP
+    byte paramType = bluetoothSerial.read(); // Should be 0x01
+    if(paramType == PARAM_IDS.KP) {
+        float newKp = readFloatFromBluetooth();
+        writeKp(newKp);
+        DEBUG_PRINTLN("Updated Kp: " + String(newKp));
+    } else {
+        DEBUG_PRINTLN("Expected KP, got: " + String(paramType, HEX));
+        return;
+    }
+
+    // Process KI
+    paramType = bluetoothSerial.read(); // Should be 0x02
+    if(paramType == PARAM_IDS.KI) {
+        float newKi = readFloatFromBluetooth();
+        writeKi(newKi);
+        DEBUG_PRINTLN("Updated Ki: " + String(newKi));
+    } else {
+        DEBUG_PRINTLN("Expected KI, got: " + String(paramType, HEX));
+        return;
+    }
+
+    // Process KD
+    paramType = bluetoothSerial.read(); // Should be 0x03
+    if(paramType == PARAM_IDS.KD) {
+        float newKd = readFloatFromBluetooth();
+        writeKd(newKd);
+        DEBUG_PRINTLN("Updated Kd: " + String(newKd));
+    } else {
+        DEBUG_PRINTLN("Expected KD, got: " + String(paramType, HEX));
+        return;
     }
 }
 
 void SVKTunerApp::parseSpeedData() {
-    byte speedType = bluetoothSerial.read(); // Read the next byte for the speed parameter type
+    // Process baseSpeed
+    byte speedType = bluetoothSerial.read();
+    if(speedType == PARAM_IDS.BASE_SPEED) {
+        int newBaseSpeed = readIntFromBluetooth();
+        writeBaseSpeed(newBaseSpeed);
+        DEBUG_PRINTLN("Updated BaseSpeed: " + String(newBaseSpeed));
+    } else {
+        DEBUG_PRINTLN("Expected BaseSpeed, got: " + String(speedType, HEX));
+        return;
+    }
     
-    switch (speedType) {
-        case PARAM_IDS.BASE_SPEED:
-            int newBaseSpeed = readIntFromBluetooth();
-            writeBaseSpeed(newBaseSpeed); // Save to EEPROM
-            DEBUG_PRINTLN("Updated BaseSpeed: " + String(newBaseSpeed));
-            break;
-        case PARAM_IDS.MAX_SPEED:
-            int newMaxSpeed = readIntFromBluetooth();
-            writeMaxSpeed(newMaxSpeed); // Save to EEPROM
-            DEBUG_PRINTLN("Updated MaxSpeed: " + String(newMaxSpeed));
-            break;
-        case PARAM_IDS.ACCELERATION:
-            int newAcceleration = readIntFromBluetooth();
-            writeAcceleration(newAcceleration); // Save to EEPROM
-            DEBUG_PRINTLN("Updated Acceleration: " + String(newAcceleration));
-            break;
-        default:
-            DEBUG_PRINTLN("Unknown Speed parameter.");
-            break;
+    // Process maxSpeed
+    speedType = bluetoothSerial.read();
+    if(speedType == PARAM_IDS.MAX_SPEED) {
+        int newMaxSpeed = readIntFromBluetooth();
+        writeMaxSpeed(newMaxSpeed);
+        DEBUG_PRINTLN("Updated MaxSpeed: " + String(newMaxSpeed));
+    } else {
+        DEBUG_PRINTLN("Expected MaxSpeed, got: " + String(speedType, HEX));
+        return;
+    }
+    
+    // Process acceleration
+    speedType = bluetoothSerial.read();
+    if(speedType == PARAM_IDS.ACCELERATION) {
+        int newAcceleration = readIntFromBluetooth();
+        writeAcceleration(newAcceleration);
+        DEBUG_PRINTLN("Updated Acceleration: " + String(newAcceleration));
+    } else {
+        DEBUG_PRINTLN("Expected Acceleration, got: " + String(speedType, HEX));
+        return;
     }
 }
 
 void SVKTunerApp::parseCustomVariableData() {
     byte customVarType = bluetoothSerial.read(); // Read custom variable identifier
 
-    switch (customVarType) {
-        case PARAM_IDS.CUSTOM_VAR_1:
-            float customVar1 = readFloatFromBluetooth();
-            addCustomVariable(customVar1);
-            DEBUG_PRINTLN("Updated Custom Variable 1: " + String(customVar1));
-            break;
-        case PARAM_IDS.CUSTOM_VAR_2:
-            float customVar2 = readFloatFromBluetooth();
-            addCustomVariable(customVar2);
-            DEBUG_PRINTLN("Updated Custom Variable 2: " + String(customVar2));
-            break;
-        case PARAM_IDS.CUSTOM_VAR_3:
-            float customVar3 = readFloatFromBluetooth();
-            addCustomVariable(customVar3);
-            DEBUG_PRINTLN("Updated Custom Variable 3: " + String(customVar3));
-            break;
-        case PARAM_IDS.CUSTOM_VAR_4:
-            float customVar4 = readFloatFromBluetooth();
-            addCustomVariable(customVar4);
-            DEBUG_PRINTLN("Updated Custom Variable 4: " + String(customVar4));
-            break;
-        case PARAM_IDS.CUSTOM_VAR_5:
-            float customVar5 = readFloatFromBluetooth();
-            addCustomVariable(customVar5);
-            DEBUG_PRINTLN("Updated Custom Variable 5: " + String(customVar5));
-            break;
-        default:
-            DEBUG_PRINTLN("Unknown Custom Variable type.");
-            break;
+    // Check if it's a valid custom variable ID
+    if (customVarType < PARAM_IDS.CUSTOM_VAR_1 || customVarType > PARAM_IDS.CUSTOM_VAR_5) {
+        DEBUG_PRINTLN("Invalid custom variable ID");
+        return; // Exit early if invalid ID
     }
+
+    // Read the float value from Bluetooth
+    float customVarValue = readFloatFromBluetooth();
+
+    // Call addCustomVariable with customVarType and the value
+    addCustomVariable(customVarType, customVarValue);
+    
+    DEBUG_PRINTLN("Updated Custom Variable " + String(customVarType - PARAM_IDS.CUSTOM_VAR_1 + 1) + ": " + String(customVarValue));
 }
 
 float SVKTunerApp::readFloatFromBluetooth() {
@@ -286,7 +315,6 @@ void SVKTunerApp::writeKp(float value)
 {
     if (millis() - _lastWriteTime >= WRITE_TIMEOUT) {
         writeFloatToEEPROM(KP_ADDRESS, value);
-        _lastWriteTime = millis(); // Update the last write time
         Serial.println("Kp updated in EEPROM.");
     } else {
         Serial.println("Write timeout: Kp not updated.");
@@ -297,7 +325,6 @@ void SVKTunerApp::writeKi(float value)
 {
     if (millis() - _lastWriteTime >= WRITE_TIMEOUT) {
         writeFloatToEEPROM(KI_ADDRESS, value);
-        _lastWriteTime = millis(); // Update the last write time
         Serial.println("Ki updated in EEPROM.");
     } else {
         Serial.println("Write timeout: Ki not updated.");
@@ -308,7 +335,6 @@ void SVKTunerApp::writeKd(float value)
 {
     if (millis() - _lastWriteTime >= WRITE_TIMEOUT) {
         writeFloatToEEPROM(KD_ADDRESS, value);
-        _lastWriteTime = millis(); // Update the last write time
         Serial.println("Kd updated in EEPROM.");
     } else {
         Serial.println("Write timeout: Kd not updated.");
@@ -319,7 +345,6 @@ void SVKTunerApp::writeBaseSpeed(int value)
 {
     if (millis() - _lastWriteTime >= WRITE_TIMEOUT) {
         writeIntToEEPROM(BASE_SPEED_ADDRESS, value);
-        _lastWriteTime = millis(); // Update the last write time
         Serial.println("BaseSpeed updated in EEPROM.");
     } else {
         Serial.println("Write timeout: BaseSpeed not updated.");
@@ -329,7 +354,6 @@ void SVKTunerApp::writeBaseSpeed(int value)
 void SVKTunerApp::writeMaxSpeed(int value) {
     if (millis() - _lastWriteTime >= WRITE_TIMEOUT) {
         writeIntToEEPROM(MAX_SPEED_ADDRESS, value);
-        _lastWriteTime = millis(); // Update the last write time
         Serial.println("MaxSpeed updated in EEPROM.");
     } else {
         Serial.println("Write timeout: MaxSpeed not updated.");
@@ -340,45 +364,38 @@ void SVKTunerApp::writeAcceleration(int value)
 {
     if (millis() - _lastWriteTime >= WRITE_TIMEOUT) {
         writeIntToEEPROM(ACCELERATION_ADDRESS, value);
-        _lastWriteTime = millis(); // Update the last write time
         Serial.println("Acceleration updated in EEPROM.");
     } else {
         Serial.println("Write timeout: Acceleration not updated.");
     }
 }
 
-void SVKTunerApp::addCustomVariable() {
-    // Read which variable (1-5) from Bluetooth stream
-    byte customVarType = bluetoothSerial.read();
-    
-    // Validate the custom variable ID
+void SVKTunerApp::addCustomVariable(byte customVarType, float value) {
+    // Validate the custom variable ID (this is now handled by parseCustomVariableData)
     if(customVarType < PARAM_IDS.CUSTOM_VAR_1 || customVarType > PARAM_IDS.CUSTOM_VAR_5) {
         DEBUG_PRINTLN("Invalid custom variable ID");
         return;
     }
-    
-    // Calculate which variable (0-4 index)
+
+    // Calculate the index (0-4) based on the custom variable ID
     int varIndex = customVarType - PARAM_IDS.CUSTOM_VAR_1;
-    
-    // Calculate EEPROM address (sequential floats starting at CUSTOM_VAR_START_ADDRESS)
+
+    // Calculate the EEPROM address (sequential floats starting at CUSTOM_VAR_START_ADDRESS)
     int valueAddress = CUSTOM_VAR_START_ADDRESS + (varIndex * CUSTOM_VAR_SIZE);
-    
-    // Read the float value from Bluetooth
-    float value = readFloatFromBluetooth();
-    
+
     // Write to EEPROM with timeout protection
     if (millis() - _lastWriteTime >= WRITE_TIMEOUT) {
         writeFloatToEEPROM(valueAddress, value);
-        _lastWriteTime = millis();
         
         DEBUG_PRINT("Updated CustomVar");
-        DEBUG_PRINT(varIndex + 1);
+        DEBUG_PRINT(varIndex + 1);  // CustomVar 1, 2, 3, etc.
         DEBUG_PRINT(": ");
-        DEBUG_PRINTLN(value, 4); // Print with 4 decimal places
+        DEBUG_PRINTLN(value, 4); // Print value with 4 decimal places
     } else {
         DEBUG_PRINTLN("Write timeout: Custom variable not updated");
     }
 }
+
 
 void SVKTunerApp::logCustomVariables() {
     DEBUG_PRINTLN("\nCustom Variables:");

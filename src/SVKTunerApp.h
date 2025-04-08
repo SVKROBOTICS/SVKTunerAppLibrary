@@ -4,6 +4,7 @@
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
 
+/// @brief Struct for hex Param Ids for each parameter
 struct ParamIDs {
     // PID Parameters
     static const uint8_t PID_PARAM_HEADER = 0x50; // PID Param header byte 'P' in bin
@@ -12,7 +13,7 @@ struct ParamIDs {
     static const uint8_t KD = 0x03;
 
     // Speed Parameters
-    static const uint8_t SPEED_PARAM_HEADER = 0x53; // Speed Param header byte 'S' in bin
+    static const uint8_t SPEED_PARAM_HEADER = 0x53; // Speed Param header byte 'S' in hex
     static const uint8_t BASE_SPEED = 0x10;
     static const uint8_t MAX_SPEED = 0x11;
     static const uint8_t ACCELERATION = 0x12;
@@ -30,6 +31,7 @@ struct ParamIDs {
     static const uint8_t COMMAND_STOP = 0xAA;
 };
 
+/// @brief Enum for setting/getting robot state
 enum START_STOP_STATE {
     STOPPED,
     RUNNING
@@ -45,7 +47,7 @@ public:
     /// @brief Reads bluetooth buffer and processes all bluetooth data correctly based on input
     bool processBluetoothData();
     /// @brief Reads bluetooth buffer and checks only for start and stop commands
-    void processStartStopCommands();
+    bool processStartStopCommands();
 
     // Functions to read PID values from EEPROM
 
@@ -77,6 +79,14 @@ public:
     void logKi();
     /// @brief Logs Kd to Serial monitor
     void logKd();
+    /// @brief Logs BaseSpeed to Serial monitor
+    void logBaseSpeed();
+    /// @brief Logs MaxSpeed to Serial monitor
+    void logMaxSpeed();
+    /// @brief Logs Acceleration to Serial monitor
+    void logAcceleration();
+    /// @brief Logs Custom Variable values
+    void logCustomVariables();
     /// @brief Logs all PID parameters to Serial monitor
     void logAllParameters();
 
@@ -103,9 +113,6 @@ private:
     void startRobot();
     /// @brief Changes robot state to Stop
     void stopRobot();
-    /// @brief Sends updated Robot Status message
-    /// @param statusMessage Current Robot Status
-    void sendStatusUpdate(const String& statusMessage);
     /// @brief Write float to EEPROM
     /// @param address EEPROM Memory address
     /// @param value Float value
@@ -146,6 +153,11 @@ private:
     /// @param acceleration Int acceleration value
     void writeAcceleration(int acceleration);
 
+    /// @brief Adds and writes custom variable values to EEPROM
+    /// @param customVarType Custom Variable Unique Param ID
+    /// @param value Float value of Variable
+    void addCustomVariable(byte customVarType, float value);
+
     /// @brief Prints Bluetooth data buffer for debugging
     /// @param buffer Bluetooth 64 byte buffer
     void printDebugBuffer(String &buffer);
@@ -153,7 +165,7 @@ private:
     /// @brief Tracks the last write time
     unsigned long _lastWriteTime = 0;
     /// 5-second timeout
-    static const unsigned long WRITE_TIMEOUT = 5000;
+    static const unsigned long WRITE_TIMEOUT = 1000;
 
     /// Addresses for PID parameters in EEPROM
     static const int KP_ADDRESS = 0;
