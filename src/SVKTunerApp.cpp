@@ -138,7 +138,7 @@ int SVKTunerApp::readCustomVariable(int index)
 {
     if(index < MAX_CUSTOM_VARS)
     {
-        return readFloatFromBluetooth(CUSTOM_VAR_START_ADDRESS + (index * CUSTOM_VAR_SIZE));
+        return readFloatFromEEPROM(CUSTOM_VAR_START_ADDRESS + (index * CUSTOM_VAR_SIZE));
     }
     else
     {
