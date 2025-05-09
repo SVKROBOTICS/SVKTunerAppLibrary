@@ -211,6 +211,6 @@ private:
     // Start-Stop State
     START_STOP_STATE _currentState;
     // Robot Mode
-    ROBOT_MODE _currentMode = RUN_MODE;
+    ROBOT_MODE _currentMode;
 
 };
