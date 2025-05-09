@@ -37,6 +37,13 @@ enum START_STOP_STATE {
     RUNNING
 };
 
+/// @brief Enum for getting/setting robot operating mode (running | tuning)
+enum ROBOT_MODE {
+    INVALID_MODE = -1,
+    RUN_MODE = 0,
+    TUNE_MODE = 1
+};
+
 class SVKTunerApp {
 public:
     /// @brief Class Constructor
@@ -44,12 +51,17 @@ public:
     SVKTunerApp(SoftwareSerial& serial);
     /// @brief Begins connection
     void begin(long baudRate);
+    /// @brief Checks incoming bluetooth byte and checks if its a start-stop command or PID value change.
+    /// @return ROBOT_MODE enum value (RUN_MODE | TUNE_MODE)
+    ROBOT_MODE processNextMessage();
     /// @brief Reads bluetooth buffer and processes all bluetooth data correctly based on input
+    /// @return Bool value if data process was successful
     bool processBluetoothData();
     /// @brief Reads bluetooth buffer and checks only for start and stop commands
+    /// @return Bool value if data process was successful
     bool processStartStopCommands();
 
-    // Functions to read PID values from EEPROM
+    /// Functions to read PID values from EEPROM
 
     /// @brief Read Kp value
     float readKp();
@@ -75,6 +87,12 @@ public:
     /// @brief Returns Robot State, either STOPPED or RUNNING
     /// @return Start Stop Enum Value ( STOPPED || RUNNING )
     inline START_STOP_STATE getRobotState() { return _currentState; }
+    /// @brief Returns Robot Mode, either RUN_MODE for running PID loop or TUNE_MODE for PID Param editing
+    /// @return Robot Mode enum value (RUN_MODE || TUNE_MODE)
+    inline ROBOT_MODE getRobotMode() { return _currentMode; }
+    /// @brief Sets Robot mode, to either RUN_MODE or TUNE_MODE
+    /// @param robotMode ROBOT_MODE enum value
+    inline void setRobotMode(ROBOT_MODE robotMode);
 
     /// Functions to log PID values to Serial Monitor
 
@@ -190,7 +208,9 @@ private:
     // Instace of PARAM_IDs Struct
     static const ParamIDs PARAM_IDS;
 
-    // Start-Stop state
+    // Start-Stop State
     START_STOP_STATE _currentState;
+    // Robot Mode
+    ROBOT_MODE _currentMode = RUN_MODE;
 
 };

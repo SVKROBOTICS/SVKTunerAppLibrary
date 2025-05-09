@@ -36,6 +36,31 @@ void SVKTunerApp::begin(long baudRate)
     bluetoothSerial.begin(baudRate); // Initialize SoftwareSerial communication
 }
 
+ROBOT_MODE SVKTunerApp::processNextMessage() {
+    if (!bluetoothSerial.available()) {
+        return ROBOT_MODE::INVALID_MODE; // No data to process
+    }
+
+    uint8_t peekByte = bluetoothSerial.peek(); // Peek without consuming byte from buffer
+
+    if (peekByte == ParamIDs::COMMAND_START || peekByte == ParamIDs::COMMAND_STOP) {
+        DEBUG_PRINTLN("Received Byte: " + String(peekByte));
+        DEBUG_PRINTLN("Robot Mode: Run Mode");
+        return ROBOT_MODE::RUN_MODE;
+    } else if (peekByte == ParamIDs::PID_PARAM_HEADER ||
+               peekByte == ParamIDs::SPEED_PARAM_HEADER ||
+               peekByte == ParamIDs::CUSTOM_VAR_HEADER) {
+        DEBUG_PRINTLN("Received Byte: " + String(peekByte));
+        DEBUG_PRINTLN("Robot Mode: Tune Mode");
+        return ROBOT_MODE::TUNE_MODE;
+    }
+
+    // If unknown header, read and discard it to avoid lockup
+    DEBUG_PRINTLN("Received Byte is Unknown: " + String(peekByte));
+    bluetoothSerial.read(); // Discard unknown byte
+    return ROBOT_MODE::INVALID_MODE;
+}
+
 bool SVKTunerApp::processBluetoothData() {
     while (bluetoothSerial.available()) {
         byte receivedByte = bluetoothSerial.read();
@@ -120,6 +145,12 @@ int SVKTunerApp::readCustomVariable(int index)
         Serial.println("Error, max amount of custom variables is 5");
         return;
     }
+}
+
+void SVKTunerApp::setRobotMode(ROBOT_MODE robotMode)
+{
+    if(robotMode == RUN_MODE || robotMode == TUNE_MODE)
+        _currentMode;
 }
 
 void SVKTunerApp::logKp()
