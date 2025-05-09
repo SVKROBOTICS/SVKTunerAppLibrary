@@ -92,7 +92,7 @@ public:
     inline ROBOT_MODE getRobotMode() { return _currentMode; }
     /// @brief Sets Robot mode, to either RUN_MODE or TUNE_MODE
     /// @param robotMode ROBOT_MODE enum value
-    inline void setRobotMode(ROBOT_MODE robotMode);
+    void setRobotMode(ROBOT_MODE robotMode);
 
     /// Functions to log PID values to Serial Monitor
 
